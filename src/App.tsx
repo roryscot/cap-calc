@@ -1,61 +1,191 @@
 import './App.css';
-import React, { MouseEvent } from 'react';
+import React, { useState, Dispatch, SetStateAction, MouseEventHandler } from 'react';
 
-const numButton = (n: number, onCick: (e: MouseEvent) => void) => (
-  <div key={`numButton-${n}`} className={`num-${n === -1 ? 'dot' : n}`} onClick={onCick}>
-    {n === -1 ? '.' : n}
-  </div>
-);
-
-const opButton = (o: () => JSX.Element, onCick: (e: MouseEvent) => void, i: number) => (
-  <div key={`opButton-${i}`} className={`op-${i + 1}`} onClick={onCick}>
-    {o()}
-  </div>
-);
-
-const spButton = (key: string, s: () => JSX.Element, onCick: (e: MouseEvent) => void, i: number) => (
-  <div key={`spButton-${key}`} className={`${key} special-code`} onClick={onCick}>
-    {s()}
-  </div>
-);
-
-const handleNumPushed = (e: MouseEvent) => {
-  const target = e.target as HTMLElement;
-  console.log(target.innerHTML);
+const INITIAL_STATE = {
+  runningTotal: 0,
+  inputs: [] as Array<string>,
+  currentDisplay: '',
 };
 
-const handleOpPushed = (e: MouseEvent) => {
-  const target = e.target as HTMLElement;
-  console.log(target.innerHTML);
+const ERROR_MESSAGE = 'Error!';
+const UNDEFINED = 'Undefined';
+
+export const numButtons = [7, 8, 9, 4, 5, 6, 1, 2, 3, 0, -1];
+export const opButtons = {
+  '÷': () => <>&#247;</>,
+  '×': () => <>&#215;</>,
+  '-': () => <>-</>,
+  '+': () => <>+</>,
+  '=': () => <>=</>,
 };
 
-const handleSpecialPushed = (e: MouseEvent) => {
-  const target = e.target as HTMLElement;
-  console.log(target.innerHTML);
+export const specialButtons = {
+  ac: () => <>AC</>,
+  'plus-minus': () => <>+/-</>,
+  percent: () => <>&#37;</>,
 };
 
 const Calc = () => {
-  const buttonNums = [7, 8, 9, 4, 5, 6, 1, 2, 3, 0, -1];
-  const opButtons = [() => <>&#247;</>, () => <>&#215;</>, () => <>-</>, () => <>+</>, () => <>=</>];
-  const specialButtons = {
-    ac: () => <> AC </>,
-    'plus-minus': () => <> +/- </>,
-    percent: () => <> &#37; </>,
+  const [runningTotal, setRunningTotal] = useState(INITIAL_STATE.runningTotal);
+  const [inputs, setinputs]: [string[], Dispatch<SetStateAction<string[]>>] = useState(INITIAL_STATE.inputs);
+  const [currentDisplay, setcurrentDisplay] = useState(INITIAL_STATE.currentDisplay);
+
+  const numButton = (n: number, onCick: MouseEventHandler<HTMLDivElement>) => {
+    return (
+      <div data-cy={`numButton-${n}`} key={`numButton-${n}`} className={`num-${n === -1 ? 'dot' : n}`} onClick={onCick}>
+        {n === -1 ? '.' : n}
+      </div>
+    );
+  };
+
+  const opButton = (op: string, element: () => JSX.Element, onCick: MouseEventHandler<HTMLDivElement>, i: number) => (
+    <div data-cy={`opButton-${i}`} key={`opButton-${op}`} className={`op-${i + 1}`} onClick={onCick}>
+      {element()}
+    </div>
+  );
+
+  const spButton = (op: string, element: () => JSX.Element, onCick: MouseEventHandler<HTMLDivElement>, i: number) => (
+    <div data-cy={`spButton-${op}`} key={`spButton-${op}`} className={`${op} special-code`} onClick={onCick}>
+      {element()}
+    </div>
+  );
+
+  const handleNumPushed = (n: number) => {
+    if (currentDisplay === ERROR_MESSAGE) {
+      setcurrentDisplay(`${n}`);
+    } else {
+      let inputsCopy = [...inputs];
+
+      let lastInput = inputsCopy[inputsCopy.length - 1];
+      lastInput = lastInput === '/' ? '÷' : lastInput;
+      lastInput = lastInput === '*' ? '×' : lastInput;
+
+      if (Object.keys(opButtons).includes(lastInput)) {
+        // If the last input is an op
+        setcurrentDisplay(`${n}`);
+        setinputs([...inputsCopy, '']);
+      } else {
+        if (n === -1) {
+          let update;
+          if (currentDisplay.includes('.')) {
+            update = currentDisplay.split('.').join('') + '.';
+          } else {
+            update = currentDisplay + '.';
+          }
+          setcurrentDisplay(update);
+        } else {
+          if (runningTotal) {
+            setRunningTotal(INITIAL_STATE.runningTotal);
+            setcurrentDisplay(`${n}`);
+          } else {
+            setcurrentDisplay(currentDisplay + `${n}`);
+          }
+        }
+      }
+    }
+  };
+
+  const handleOpPushed = (op: string) => {
+    const update = [...inputs, currentDisplay];
+
+    try {
+      if (op === '=') {
+        let total = eval(update.join(' ')) || 0;
+        setRunningTotal(total);
+        setinputs(INITIAL_STATE.inputs);
+        setcurrentDisplay(total === Infinity ? UNDEFINED : `${total}`);
+      } else {
+        const inputs_copy = [...inputs];
+
+        let lastInput = inputs_copy[inputs_copy.length - 1];
+        lastInput = lastInput === '/' ? '÷' : lastInput;
+        lastInput = lastInput === '*' ? '×' : lastInput;
+
+        if (Object.keys(opButtons).includes(lastInput)) {
+          // overwrite last input
+          inputs_copy.pop();
+          inputs_copy.push(op);
+          setinputs(inputs_copy);
+        } else {
+          if (update.length) {
+            if (Object.keys(opButtons).includes(op)) {
+              op = op === '÷' ? '/' : op;
+              op = op === '×' ? '*' : op;
+              const total = eval([...update].join(' ')) || 0;
+              setcurrentDisplay(total);
+              setinputs([...update, op]);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      setcurrentDisplay(ERROR_MESSAGE);
+    }
+  };
+
+  const handleSpecialPushed = (op: string) => {
+    try {
+      switch (op) {
+        case 'ac':
+          setcurrentDisplay(INITIAL_STATE.currentDisplay);
+          setinputs(INITIAL_STATE.inputs);
+          setRunningTotal(INITIAL_STATE.runningTotal);
+          break;
+        case 'plus-minus':
+          const flip = parseFloat(currentDisplay) * -1;
+          setcurrentDisplay(`${flip}`);
+          setinputs([`${flip}`]);
+          setRunningTotal(flip);
+          break;
+        case 'percent':
+          const pct = parseFloat(currentDisplay) / 100;
+          setcurrentDisplay(`${pct}`);
+          setinputs([`${pct}`]);
+          setRunningTotal(pct);
+          break;
+        default:
+          throw new Error('Invalid Operation');
+      }
+    } catch (e) {
+      throw new Error('Invalid Operation');
+    }
   };
 
   return (
     <div className="App">
       <div className="calc">
-        <div className="display">
-          <div id="display-text"> 0 </div>
+        <div className="display" data-cy="display">
+          <div id="display-text">{currentDisplay || '0'}</div>
         </div>
         <div className="nums">
-          {Object.entries(specialButtons).map(([k, v], i) =>
-            spButton(k, v as () => JSX.Element, handleSpecialPushed, i),
+          {Object.entries(specialButtons).map(([op, element], i) =>
+            spButton(
+              op,
+              element,
+              (e) => {
+                handleSpecialPushed(op);
+              },
+              i,
+            ),
           )}
-          {buttonNums.map((n) => numButton(n, handleNumPushed))}
+          {numButtons.map((n) =>
+            numButton(n, (e) => {
+              handleNumPushed(n);
+            }),
+          )}
         </div>
-        <div className="ops">{opButtons.map((o, i) => opButton(o as () => JSX.Element, handleOpPushed, i))}</div>
+        <div className="ops">
+          {Object.entries(opButtons).map(([op, div], i) =>
+            opButton(
+              op,
+              div,
+              async (e) => {
+                handleOpPushed(op);
+              },
+              i,
+            ),
+          )}
+        </div>
       </div>
     </div>
   );

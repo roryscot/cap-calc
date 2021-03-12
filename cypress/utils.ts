@@ -40,5 +40,5 @@ export const performOperation = (n: number, m: number, op: number) => {
   cy.dataCy(`opButton-${op}`).click();
   inputNumber(m);
   cy.dataCy(`opButton-${operations.EQUALS}`).click();
-  testDisplay(result);
+  testDisplay(result === Infinity ? 'Undefined' : result);
 };
