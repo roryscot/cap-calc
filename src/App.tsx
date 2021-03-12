@@ -44,7 +44,7 @@ const Calc = () => {
     </div>
   );
 
-  const spButton = (op: string, element: () => JSX.Element, onCick: MouseEventHandler<HTMLDivElement>, i: number) => (
+  const spButton = (op: string, element: () => JSX.Element, onCick: MouseEventHandler<HTMLDivElement>) => (
     <div data-cy={`spButton-${op}`} key={`spButton-${op}`} className={`${op} special-code`} onClick={onCick}>
       {element()}
     </div>
@@ -54,16 +54,14 @@ const Calc = () => {
     if (currentDisplay === ERROR_MESSAGE) {
       setcurrentDisplay(`${n}`);
     } else {
-      let inputsCopy = [...inputs];
-
-      let lastInput = inputsCopy[inputsCopy.length - 1];
+      let lastInput = inputs[inputs.length - 1];
       lastInput = lastInput === '/' ? '÷' : lastInput;
       lastInput = lastInput === '*' ? '×' : lastInput;
 
       if (Object.keys(opButtons).includes(lastInput)) {
         // If the last input is an op
         setcurrentDisplay(`${n}`);
-        setinputs([...inputsCopy, '']);
+        setinputs([...inputs, '']);
       } else {
         if (n === -1) {
           let update;
@@ -90,22 +88,22 @@ const Calc = () => {
 
     try {
       if (op === '=') {
-        let total = eval(update.join(' ')) || 0;
+        const total = eval(update.join(' ')) || 0;
         setRunningTotal(total);
         setinputs(INITIAL_STATE.inputs);
         setcurrentDisplay(total === Infinity ? UNDEFINED : `${total}`);
       } else {
-        const inputs_copy = [...inputs];
+        const inputsCopy = [...inputs];
 
-        let lastInput = inputs_copy[inputs_copy.length - 1];
+        let lastInput = inputsCopy[inputsCopy.length - 1];
         lastInput = lastInput === '/' ? '÷' : lastInput;
         lastInput = lastInput === '*' ? '×' : lastInput;
 
         if (Object.keys(opButtons).includes(lastInput)) {
           // overwrite last input
-          inputs_copy.pop();
-          inputs_copy.push(op);
-          setinputs(inputs_copy);
+          inputsCopy.pop();
+          inputsCopy.push(op);
+          setinputs(inputsCopy);
         } else {
           if (update.length) {
             if (Object.keys(opButtons).includes(op)) {
@@ -158,18 +156,13 @@ const Calc = () => {
           <div id="display-text">{currentDisplay || '0'}</div>
         </div>
         <div className="nums">
-          {Object.entries(specialButtons).map(([op, element], i) =>
-            spButton(
-              op,
-              element,
-              (e) => {
-                handleSpecialPushed(op);
-              },
-              i,
-            ),
+          {Object.entries(specialButtons).map(([op, element]) =>
+            spButton(op, element, () => {
+              handleSpecialPushed(op);
+            }),
           )}
           {numButtons.map((n) =>
-            numButton(n, (e) => {
+            numButton(n, () => {
               handleNumPushed(n);
             }),
           )}
@@ -179,7 +172,7 @@ const Calc = () => {
             opButton(
               op,
               div,
-              async (e) => {
+              async () => {
                 handleOpPushed(op);
               },
               i,
